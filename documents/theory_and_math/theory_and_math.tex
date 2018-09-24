@@ -502,7 +502,7 @@ for $\bodyrate_x$, $\bodyrate_y$, and $\bodyrate_z$ as
 выводах можно прочитать в
 техническом докладе~\cite{Faessler17tr}.
 
-\subsubsection{Закон управления верхнего уровня}
+\subsubsection{Высокоуровневый закон управления}
 
 В нашем контроллере позиции высокого уровня,
 адаптированном из~\cite{Faessler15icra}, мы рассчитываем желаемую ориентацию $\ori{des}$, суммарную тягу $\thrust_{\mathsmaller{\mathrm{cmd}}}$, угловые скорости $\vect{\bodyrates}{}{des}$, угловые ускорения $\vectdot{\bodyrates}{}{des}$, и угловой jerk $\vectddot{\bodyrates}{}{des}$, которые затем выдерживаются
@@ -518,21 +518,21 @@ for $\bodyrate_x$, $\bodyrate_y$, and $\bodyrate_z$ as
 	\label{eq:position_controller}
 \end{align}
 %
-where $\vect{\acc}{}{fb}$ are the PD feedback-control terms computed from the position and velocity control errors as 
+где $\vect{\acc}{}{fb}$ --- выход пропорционально-дифференциального контроллера\footnote{PositionController::computePIDErrorAcc()}, обрабатывающего невязки позиции и скорости как
 %
 \begin{equation}
 	\vect{\acc}{}{fb} = -\vect{K}{}{pos} \left( \pos - \vect{\pos}{}{ref} \right) - \vect{K}{}{vel} \left( \vel - \vect{\vel}{}{ref} \right)
 \end{equation}
 %
-where $\vect{K}{}{pos}$ and $\vect{K}{}{vel}$ are constant diagonal matrices.
-The reference acceleration $\vect{\acc}{}{ref}$ is obtained directly from the reference trajectory and the acceleration due to rotor drag $\vect{\acc}{}{rd}$ is computed according to~\eqref{eq:velocity_dynamics} as
+где $\vect{K}{}{pos}$ и $\vect{K}{}{vel}$ являются постоянными диагональными матрицами.
+Заданное ускорение $\vect{\acc}{}{ref}$ берётся прямо из траектории, а ускорение из-за торможения ротора $\vect{\acc}{}{rd}$ рассчитывается\footnote{PositionController::computeAeroCompensatedReferenceInputs()} в соответствии с~\eqref{eq:velocity_dynamics} как
 %
 \begin{equation}
 	\vect{\acc}{}{rd} = - \ori{ref} \dragmat \vecttrans{\ori{}}{}{ref} \vect{\vel}{}{ref} .
 \end{equation}
 %
-We compute the desired orientation $\ori{des}$ such that ${\vect{z}{}{\bfr,des} = \vect{\acc}{}{des} / \norm{\vect{\acc}{}{des}}}$ and the reference heading $\vect{\heading}{}{ref}$ is respected.
-This is achieved with
+Желаемая ориентация $\ori{des}$ вычисляется так, что ${\vect{z}{}{\bfr,des} = \vect{\acc}{}{des} / \norm{\vect{\acc}{}{des}}}$ и с учётом заданного курса $\vect{\heading}{}{ref}$.
+Эти условия выполняются при
 %
 \begin{align}
 	\vect{z}{}{\bfr,des} &= \frac{\vect{\acc}{}{des}}{\norm{\vect{\acc}{}{des}}} \\
@@ -540,27 +540,27 @@ This is achieved with
 	\vect{y}{}{\bfr,des} &= \vect{z}{}{\bfr,des} \times \vect{x}{}{\bfr,des}
 \end{align}
 %
-as
+как
 %
 \begin{equation}
 	\ori{des} = \sVec{\vect{x}{}{\bfr,des} & \vect{y}{}{\bfr,des} & \vect{z}{}{\bfr,des}} .
 \end{equation}
 %
-By projecting the desired accelerations onto the actual body $z$-axis and considering the thrust model~\eqref{eq:thrust_model}, we can then compute the collective thrust input as
+Проецируя желательные ускорения на ось $z$ квадрокоптера и рассматривая модель тяги~\eqref{eq:thrust_model}, мы можем вычислить уставку суммарной тяги как
 %
 \begin{equation}
 	\thrust_{\mathsmaller{\mathrm{cmd}}} = \vecttrans{\acc}{}{des} \vect{z}{}{\bfr} - \horzthrustcoeff (\vecttrans{v}{}{}( \vect{x}{}{\bfr}+ \vect{y}{}{\bfr}))^2.
 	\label{eq:norm_thrust}
 \end{equation}
 %
-Finally, we compute the desired body rates, the angular accelerations, and the angular jerk by transforming the reference body rates into the current body frame and take its derivatives as
+Наконец, мы получим желательные угловые скорости, угловые ускорения, и угловой jerk, преобразовав заданные угловые скорости в локальную систему координат и продифференцировав их как
 %
 \begin{align}
 	\vect{\bodyrates}{}{des} &= \vecttrans{\ori{}}{}{} \ori{ref} \vect{\bodyrates}{}{ref} \\
 	\vectdot{\bodyrates}{}{des} &= \vecttrans{\ori{}}{}{} \ori{ref} \vectdot{\bodyrates}{}{ref} - \hat{\bodyrates} \vecttrans{\ori{}}{}{} \ori{ref} \vect{\bodyrates}{}{ref}
 \end{align}
 
-\subsection{Контроллер нижнего уровня}
+\subsection{Низкоуровневый контроллер}
 
 Контроллер нижнего уровня предназначен для поддержания требуемых ориентации, угловых скоростей и угловых ускорений,
 расчитанных контроллером верхнего уровня.
