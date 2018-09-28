@@ -315,7 +315,7 @@ where $\thrust$ is the mass-normalized collective thrust, ${\dragmat = \diag{\dr
 %
 Выводы и подробности по этим членам можно найти
 в~\cite{Kai17ifac}.
-В этой модели, мы рассматриваем динамику двигателей for the rotational states но пренебрегаем ей для полной тяги
+В этой модели, мы рассматриваем динамику двигателей для состояний вращения но пренебрегаем ей для полной тяги
 $\thrust$.
 Это сделано, поскольку полная тяга вычисляется в высокоуровневом контроллере позиции, который обычно работает на частоте, сравнимой с динамикой двигателей, и поэтому не имеет достаточного быстродействия для учёта этой динамики в методе управления.
 В данной работе, мы приняли модель тяги предложенную в~\cite{Svacha17icuas}
@@ -616,9 +616,9 @@ $\vect{q}{}{e,w}$ --- его вещественная часть, и
 
 \subsubsection{Управление угловыми скоростями}
 
-In this section, we present a body-rate controller that provides good tracking and disturbance rejection performance by considering the dynamics of the body rates and body torques~\eqref{eq:body_rate_dynamics} and \eqref{eq:body_torque_dynamics} as suggested in our work~\cite{Faessler17ral}.
-We achieve this by designing an LQR controller for a dynamical system containing the body rates and body torques as state.
-The inputs to this controller are the desired body rates $\vect{\bodyrates}{}{des}$, the feedback body rates $\vect{\bodyrates}{}{fb}$, and the desired mass normalized collective thrust $\thrust_{\mathsmaller{\mathrm{cmd}}}$, which are given from the high-level position and attitude controller.
+В данном разделе описан контроллер угловых скоростей, обеспечивающий хорошее качество управления и устойчивость к возмущениям путём рассмотрения динамики угловых скоростей и крутящих моментов~\eqref{eq:body_rate_dynamics} и \eqref{eq:body_torque_dynamics}, как предложено в работе~\cite{Faessler17ral}.
+Это достигается построением линейно-квадратичного контроллера динамической системы, состояние которой определяется угловыми скоростями и крутящими моментами.
+Входными сигналами этого контроллера являются желательные угловые скорости $\vect{\bodyrates}{}{des}$, the feedback body rates $\vect{\bodyrates}{}{fb}$, и желательная, нормализованная по массе, суммарная тяга $\thrust_{\mathsmaller{\mathrm{cmd}}}$. Эти сигналы приходят от высокоуровневого контроллера позиции и контроллера ориентации.
 
 Линеаризуя~\eqref{eq:body_rate_dynamics} и~\eqref{eq:body_torque_dynamics} при ${\bodyrates = \bVec{0}}$ и ${\bodytorques = \bVec{0}}$ получаем систему
 %
@@ -645,14 +645,14 @@ The inputs to this controller are the desired body rates $\vect{\bodyrates}{}{de
 	\label{eq:rates_dyn_dystem}
 \end{equation}
 %
-which we can use to design an infinite-horizon LQR control law ${\lqrinput = -\klqr \lqrstate}$ that minimizes the cost function
+которую можно применить для построения an infinite-horizon LQR control law ${\lqrinput = -\klqr \lqrstate}$, который минимизирует целевую функцию
 %
 \begin{equation}
 	\int \lqrstate^{\top} \bVec{Q} \lqrstate + \lqrinput^{\top} \bVec{R} \lqrinput \, dt
 \end{equation}
 %
 где $\bVec{Q}$ --- диагональная матрица весов и $\bVec{R}$ --- единичная матрица.
-The solution to the formulated LQR problem is a gain matrix of the form
+Решением сформулированной задачи линейно-квадратичного управления является матрица усилений в форме
 %
 \begin{equation}
 	\klqr = \begin{bmatrix}
@@ -663,7 +663,7 @@ The solution to the formulated LQR problem is a gain matrix of the form
 \end{equation}
 %
 которая соответствует пропорционально-дифференциальному контроллеру угловых скоростей.
-Additionally, мы добавляем feed forward terms такие, что $\vect{\bodyrates}{}{des}$ достигаается при ${\dot{\bodyrates} = \vectdot{\bodyrates}{}{des}}$, resulting in the control policy
+Добавим дополнительно такие опережающие члены, чтобы $\vect{\bodyrates}{}{des}$ достигались при ${\dot{\bodyrates} = \vectdot{\bodyrates}{}{des}}$, что выливается в закон управления\footnote{RPGRotorsInterface::bodyRateControl()}
 %
 \begin{equation}
 	\vect{\bodytorques}{}{des} = \klqr \begin{bmatrix}
@@ -675,15 +675,17 @@ Additionally, мы добавляем feed forward terms такие, что $\ve
 	\label{eq:lqr_controller}
 \end{equation}
 %
-with ${\vect{\bodytorques}{}{ref} = \vect{\bodyrates}{}{des} \times \inertia \vect{\bodyrates}{}{des} + \inertia \vectdot{\bodyrates}{}{des}}$ computed from~\eqref{eq:body_rate_dynamics}.
-The vector $\bodyrates$ are the estimated body rates measured by the onboard gyroscopes, and $\bodytorques$ are the estimated body torques obtained by estimating the single rotor thrusts with~\eqref{eq:motor_dynamics} and using~\eqref{eq:torque_mixing} to transform them into body torques.
-Also note that this estimation can be improved if feedback of the rotor speeds is available.
-In the controller~\eqref{eq:lqr_controller}, the term ${\bodyrates \times \inertia \bodyrates}$ provides feedback linearization, compensating for the coupling terms in the body-rate dynamics, and ${\inertia \vectdot{\bodyrates}{}{des}}$ is a feed-forward term on desired angular accelerations.
+где ${\vect{\bodytorques}{}{ref} = \vect{\bodyrates}{}{des} \times \inertia \vect{\bodyrates}{}{des} + \inertia \vectdot{\bodyrates}{}{des}}$ вычисляется из~\eqref{eq:body_rate_dynamics};
+вектор $\bodyrates$ --- это оцениваемые угловые скорости, измеренные бортовыми гироскопами;
+$\bodytorques$ --- оцениваемые крутящие моменты, получаемые путём оценки тяги отдельных двигателей из~\eqref{eq:motor_dynamics}, с использованием~\eqref{eq:torque_mixing} для получения из них крутящих моментов;
+$\inertia$ --- диагональная матрица моментов инерции(?).
+Также заметим, что оценка может быть уточнена, если доступны прямые измерения скорости роторов.
+В контроллере~\eqref{eq:lqr_controller}, члены ${\bodyrates \times \inertia \bodyrates}$ отвечают за линеаризацию обратной связи, компенсируя передаточную функцию динамики угловых скоростей, а ${\inertia \vectdot{\bodyrates}{}{des}}$ --- опережающий член по желательным угловым ускорениям.
 
 \subsubsection{Итеративный подбор тяги} \label{sec:mixer}
 
-Для расчёта тяги каждого двигателяTo compute the single rotor thrusts that achieve the desired body torques $\vect{\bodytorques}{}{des}$ and collective thrust $\thrust_{\mathsmaller{\mathrm{cmd}}}$, which we denote as \emph{mixer inputs}, необходимо решить~\eqref{eq:torque_mixing} и~\eqref{eq:collective_thrust_mixing} для $\rotthrust{i}$.
-Поскольку мы рассматриваем коэффициенты крутящего момента ротора как  be a function of the rotor thrust, we cannot solve this system of equations directly, but we can do so iteratively, as proposed in our previous work~\cite{Faessler17ral}.
+Для расчёта тяги отдельных двигателей, которая позволит достичь желательных крутящих моментов $\vect{\bodytorques}{}{des}$ и желательной суммарной тяги $\thrust_{\mathsmaller{\mathrm{cmd}}}$, which we denote as \emph{mixer inputs}, необходимо решить~\eqref{eq:torque_mixing} и~\eqref{eq:collective_thrust_mixing} для $\rotthrust{i}$.
+Поскольку коэффициенты крутящего момента ротора рассматриваются как функции тяги роторов, мы не можем решить эту систему уравнений напрямую, но можем сделать это итеративно, как предложено в нашей предыдущей работе~\cite{Faessler17ral}.
 
 В начале, мы задаём тяги двигателей
 равными, так, чтобы в сумме они выдавали требуемую тягу:
